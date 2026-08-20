@@ -1,0 +1,41 @@
+const express = require('express');
+const { Pool } = require('pg');
+const app = express();
+const PORT = 3000;
+// Configuração do middleware para ler JSON no corpo da requisição
+app.use(express.json());
+// Configuração da conexão com o PostgreSQL
+const pool = new Pool({
+user: 'seu_usuario', // substitua pelo seu usuário do banco
+host: 'localhost',
+database: 'seu_banco', // substitua pelo nome do seu banco
+password: 'sua_senha', // substitua pela sua senha do banco
+port: 5432,
+});
+// Rota POST para cadastro de usuários
+app.post('/usuarios', async (req, res) => {
+const { nome, email } = req.body;
+// Validação simples dos dados de entrada
+if (!nome || !email) {
+return res.status(400).json({ erro: 'Nome e email são obrigatórios.' });
+}
+try {
+// Query SQL utilizando placeholders ($1, $2) por segurança contra SQL Injection
+const queryText = 'INSERT INTO usuarios(nome, email) VALUES($1, $2) RETURNING *';
+const values = [nome, email];
+const resultado = await pool.query(queryText, values);
+// Retorna o usuário recém-criado com status 201 (Created)
+return res.status(201).json(resultado.rows[0]);
+} catch (error) {
+console.error('Erro ao inserir usuário:', error);
+// Trata erro de email duplicado (Constraint UNIQUE do Postgres)
+if (error.code === '23505') {
+return res.status(400).json({ erro: 'Este email já está cadastrado.' });
+}
+return res.status(500).json({ erro: 'Erro interno do servidor.' });
+}
+});
+// Inicia o servidor Express
+app.listen(PORT, () => {
+console.log(`Servidor rodando com sucesso na porta ${PORT}`);
+});

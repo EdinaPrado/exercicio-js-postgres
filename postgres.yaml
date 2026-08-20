@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+data:
+  tabela.sql:   
+   CREATE TABLE usuarios (
+      id SERIAL PRIMARY KEY,
+      nome VARCHAR(100) NOT NULL,
+      email VARCHAR(100) UNIQUE NOT NULL,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO usuarios (nome, email) VALUES ('edina', 'edina@email.com');
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: meu_usuario
+        - name: POSTGRES_PASSWORD
+          value: minha_senha
+        - name: POSTGRES_DB
+          value: meu_banco
+        volumeMounts:
+        - name: init-script-volume
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: init-script-volume
+        configMap:
+          name: postgres-init-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: postgres
+
+
